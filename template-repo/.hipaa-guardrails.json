@@ -1,0 +1,44 @@
+{
+  "_comment": "HIPAA guardrails config for this app, merged over the plugin's default policy. Only the policy owner sets a vendor's status (baa / no_phi / no_baa) after checking the signed agreement; new vendors start 'unverified'. Keys ending in '+' append to the default list. Every change raises policy_version and adds a change_log entry; CI fails otherwise.",
+  "schema_version": 2,
+  "policy_version": "1.0.0",
+  "requires_plugin": ">=0.2.0",
+  "owner": "POLICY-OWNER@example.com",
+  "change_log": [
+    {
+      "version": "1.0.0",
+      "date": "YYYY-MM-DD",
+      "approver": "POLICY-OWNER@example.com",
+      "summary": "Initial policy from the template, warn mode."
+    }
+  ],
+  "mode": "warn",
+  "runtime": {
+    "bedrock_is_baa_covered": false
+  },
+  "vendors": {
+    "aws": {
+      "status": "unverified",
+      "notes": "Which account accepted the AWS BAA, and which services this app uses"
+    }
+  },
+  "phi_mcp_tools": [],
+  "strict_paths+": [],
+  "phi_read_paths+": [],
+  "custom_rules+": [],
+  "exceptions": [],
+  "_exceptions_example": {
+    "id": "EXC-0001",
+    "rules": [
+      "DATAFILE-TABULAR"
+    ],
+    "paths": [
+      "reference/icd10/*.csv"
+    ],
+    "scope": "path",
+    "reason": "Public ICD-10 code list, no patient data",
+    "approver": "POLICY-OWNER@example.com",
+    "approved_on": "YYYY-MM-DD",
+    "expires": "YYYY-MM-DD (at most a year later)"
+  }
+}

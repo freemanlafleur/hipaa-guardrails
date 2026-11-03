@@ -1,0 +1,977 @@
+{
+  "_comment": "HIPAA guardrails default policy. A repo extends it with .hipaa-guardrails.json at its root (keys ending in '+' append to a list). Vendor statuses are all 'unverified' here on purpose: only the repo's policy owner sets 'baa', 'no_phi' or 'no_baa', after checking the signed agreement.",
+  "schema_version": 2,
+  "default_policy_version": "0.2.0",
+  "mode": "enforce",
+  "always_enforce": [
+    "MCP-PHI-TOOL",
+    "PHI-READ",
+    "PHI-EGRESS",
+    "SECRET-",
+    "ENV-",
+    "CMD-NO-VERIFY",
+    "GUARD-",
+    "POLICY-",
+    "DATAFILE-CLINICAL",
+    "DATAFILE-DUMP",
+    "CONFIG-",
+    "CMD-SKIP-HOOKS-ENV"
+  ],
+  "fail_closed": false,
+  "_always_enforce_note": "Rule ids or prefixes that block even in warn mode: patient data reaching a non-BAA session or tool, secrets and env files, changes to the guardrails themselves.",
+  "never_excepted": [
+    "MCP-PHI-TOOL",
+    "PHI-READ",
+    "PHI-EGRESS",
+    "GUARD-",
+    "POLICY-",
+    "CONFIG-",
+    "WAIVER-"
+  ],
+  "inline_allow_marker": "phi-ok:",
+  "unregistered_waiver_action": "deny",
+  "exception_expiry_warning_days": 14,
+  "synthetic_marker": "synthetic-data",
+  "runtime": {
+    "_comment": "A 'covered runtime' may read PHI files and call PHI MCP tools. Claude Code on Bedrock sets CLAUDE_CODE_USE_BEDROCK=1; it only counts when bedrock_is_baa_covered is true for this repo.",
+    "bedrock_is_baa_covered": false
+  },
+  "ci": {
+    "fail_on": [
+      "deny"
+    ],
+    "warn_on": [
+      "ask",
+      "warn"
+    ]
+  },
+  "evidence": {
+    "enabled": true,
+    "log_allowed": true,
+    "hash_paths_for_rules": [
+      "PHI-READ",
+      "PHI-READ-CONTENT",
+      "DATAFILE-"
+    ],
+    "dir": null
+  },
+  "protected_paths": [
+    ".hipaa-guardrails.json",
+    ".hipaa-guardrails/**",
+    ".hipaa-guardrails.baseline.json",
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    ".githooks/**",
+    ".husky/**",
+    ".pre-commit-config.yaml",
+    ".github/workflows/**",
+    ".github/CODEOWNERS",
+    "CODEOWNERS",
+    "docs/CODEOWNERS"
+  ],
+  "sniff": {
+    "max_bytes": 262144,
+    "max_files_per_command": 6,
+    "min_hits": 3,
+    "single_hit_rules": [
+      "PHI-SSN",
+      "PHI-SSN-LABELED",
+      "PHI-HL7"
+    ],
+    "_note": "Before a file is read into a session, its first max_bytes are checked. One hit of a single_hit_rules pattern is enough; other identifier patterns need min_hits matches, so one sample value in a source file doesn't block reading it."
+  },
+  "ignore_paths": [
+    ".git/**",
+    "node_modules/**",
+    "**/node_modules/**",
+    "vendor/**",
+    "dist/**",
+    "build/**",
+    ".next/**",
+    "**/package-lock.json",
+    "**/pnpm-lock.yaml",
+    "**/yarn.lock",
+    "**/Podfile.lock",
+    "**/*.min.js",
+    "**/*.png",
+    "**/*.jpg",
+    "**/*.jpeg",
+    "**/*.gif",
+    "**/*.webp",
+    "**/*.pdf",
+    "**/*.mp4",
+    "**/*.mov",
+    "**/*.zip"
+  ],
+  "strict_paths": [
+    "test/**",
+    "tests/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/fixtures/**",
+    "**/fixture/**",
+    "**/seed/**",
+    "**/seeds/**",
+    "**/seed.*",
+    "**/*seed*.sql",
+    "**/*seed*.json",
+    "**/mock*/**",
+    "**/*.mock.*",
+    "e2e/**",
+    "qa/**",
+    "evals/**",
+    "**/sample-data/**"
+  ],
+  "source_extensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".py",
+    ".go",
+    ".rb",
+    ".java",
+    ".kt",
+    ".swift",
+    ".cs",
+    ".php"
+  ],
+  "phi_read_paths": [
+    "**/*.hl7",
+    "**/*.ccd",
+    "**/*.ccda",
+    "**/*.dcm",
+    "**/*.x12",
+    "**/*.835",
+    "**/*.837",
+    "**/phi/**",
+    "**/exports/**",
+    "**/patient-exports/**",
+    "**/*patient*export*",
+    "**/*export*patient*",
+    "**/*.phi.*",
+    "**/prod-dump*",
+    "**/*prod*.dump",
+    "**/*prod*.sql.gz",
+    "**/*.sqlite",
+    "**/*.sqlite3",
+    "**/*.dump",
+    "**/*.bak",
+    "**/phi-*/**"
+  ],
+  "phi_mcp_tools": [],
+  "phi_patterns": [
+    {
+      "id": "PHI-SSN",
+      "description": "Social Security number in a valid format (synthetic ones start with 9xx, 000 or 666 and pass)",
+      "regex": "\\b(?!000|666|9\\d\\d)\\d{3}-(?!00)\\d{2}-(?!0000)\\d{4}\\b",
+      "scope": "all",
+      "action": "deny",
+      "synthetic_ok": false
+    },
+    {
+      "id": "PHI-MRN",
+      "description": "Medical record number written out as a literal value",
+      "regex": "(?i)\\b(mrn|medical[ _-]?record[ _-]?(?:number|num|no|#)?)\\b[\"']?\\s*[:=]\\s*[\"']?(?!(?:TEST|SYN|QA|DEMO|FAKE|MOCK|SAMPLE|EX)[-_])(?=[A-Z0-9-]*\\d{4})[A-Z0-9][A-Z0-9-]{4,}",
+      "scope": "all",
+      "action": "deny",
+      "synthetic_ok": true
+    },
+    {
+      "id": "PHI-MBI",
+      "description": "Medicare Beneficiary Identifier shape",
+      "regex": "\\b[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\\d[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\\d[AC-HJKMNP-RT-Y]{2}\\d{2}\\b",
+      "scope": "strict",
+      "action": "deny",
+      "synthetic_ok": true
+    },
+    {
+      "id": "PHI-DOB",
+      "description": "Date of birth written out as a literal value",
+      "regex": "(?i)\\b(dob|date[ _-]?of[ _-]?birth|birth[ _-]?date)\\b[\"']?\\s*[:=]\\s*[\"']?\\d{1,4}[-/.]\\d{1,2}[-/.]\\d{1,4}",
+      "scope": "strict",
+      "action": "ask",
+      "synthetic_ok": true
+    },
+    {
+      "id": "PHI-SSN-LABELED",
+      "description": "SSN written without dashes next to an SSN label",
+      "regex": "(?i)\\b(ssn|social[ _-]?security(?:[ _-]?(?:number|no|num))?)\\b[\"']?\\s*[:=]\\s*[\"']?(?!9\\d\\d|000|666)\\d{3}[ -]?\\d{2}[ -]?\\d{4}\\b",
+      "scope": "all",
+      "action": "deny",
+      "synthetic_ok": false
+    },
+    {
+      "id": "PHI-SSN-SPACED",
+      "description": "SSN-shaped number written with spaces",
+      "regex": "\\b(?!000|666|9\\d\\d)\\d{3} (?!00)\\d{2} (?!0000)\\d{4}\\b",
+      "scope": "all",
+      "action": "ask",
+      "synthetic_ok": true
+    },
+    {
+      "id": "PHI-HL7",
+      "description": "HL7 v2 message header or patient segment",
+      "regex": "(^|[\\r\\n'\"`])(MSH\\|\\^~\\\\&|PID\\|\\d*\\|)",
+      "scope": "all",
+      "action": "deny",
+      "synthetic_ok": true
+    },
+    {
+      "id": "PHI-MEMBER-ID",
+      "description": "Health plan member, subscriber or Medicaid/Medicare id written as a literal value",
+      "regex": "(?i)\\b(member|subscriber|policy|insurance|medicaid|medicare|beneficiary)[ _-]?(id|number|no|num|#)\\b[\"']?\\s*[:=]\\s*[\"']?(?!(?:TEST|SYN|QA|DEMO|FAKE|MOCK|SAMPLE|EX)[-_])(?=[A-Z0-9-]*\\d{4})[A-Z0-9][A-Z0-9-]{5,}",
+      "scope": "all",
+      "action": "ask",
+      "synthetic_ok": true
+    },
+    {
+      "id": "PHI-GOV-ID",
+      "description": "Driver's license or passport number written as a literal value",
+      "regex": "(?i)\\b(drivers?[ _-]?licen[cs]e|passport)[ _-]?(number|no|num|#|id)?\\b[\"']?\\s*[:=]\\s*[\"']?(?!(?:TEST|SYN|QA|DEMO|FAKE|MOCK|SAMPLE|EX)[-_])(?=[A-Z0-9]*\\d{4})[A-Z0-9]{6,}",
+      "scope": "all",
+      "action": "ask",
+      "synthetic_ok": true
+    }
+  ],
+  "file_level_rules": [
+    {
+      "id": "PHI-FHIR-PATIENT",
+      "description": "FHIR Patient resource with a birth date",
+      "all_of": [
+        "\"resourceType\"\\s*:\\s*\"Patient\"",
+        "\"birthDate\"\\s*:\\s*\"\\d{4}"
+      ],
+      "action": "ask",
+      "synthetic_ok": true
+    },
+    {
+      "id": "PHI-CSV-ROSTER",
+      "description": "Table whose header has both a name column and a birth date, SSN or MRN column",
+      "header_all_of": [
+        "(?i)(^|[,\\t;|])\\s*\"?(first[ _]?name|last[ _]?name|patient[ _]?name|full[ _]?name|name)\"?\\s*($|[,\\t;|])",
+        "(?i)(^|[,\\t;|])\\s*\"?(dob|date[ _]?of[ _]?birth|birth[ _]?date|ssn|mrn|medical[ _]?record[ _]?(number|no)?)\"?\\s*($|[,\\t;|])"
+      ],
+      "action": "ask",
+      "synthetic_ok": true
+    }
+  ],
+  "synthetic_email_domains": [
+    "example.com",
+    "example.org",
+    "example.net",
+    "test",
+    "example",
+    "invalid",
+    "localhost"
+  ],
+  "strict_contact_rules": {
+    "email": "ask",
+    "phone": "ask"
+  },
+  "fixture_marker_rule": {
+    "_comment": "A fixture or seed file that holds person-shaped fields must say it is synthetic (the synthetic_marker anywhere in the file).",
+    "action": "ask",
+    "field_regex": "(?i)\\b(first_?name|last_?name|full_?name|dob|date_?of_?birth|birth_?date|ssn|mrn|address|phone|diagnos\\w*|insurance_?(id|member)\\w*)\\b"
+  },
+  "log_rule": {
+    "action": "deny",
+    "call_regex": "(\\bconsole\\.(log|info|warn|error|debug|trace)|\\blogger\\.\\w+|\\blog\\.(info|warn|warning|error|debug|trace)|\\blogging\\.\\w+|\\bprint|\\bNSLog|\\bos_log|\\bfmt\\.Print\\w*|\\bSentry\\.(captureException|captureMessage|setContext|setExtra))\\s*\\(",
+    "safe_expr_regex": "(\\blen\\([^()]*\\)|[\\w$.?]+\\.(length|size|id|code|status|message)\\b|Object\\.keys\\([^()]*\\)|\\b\\w+(Id|Ids|_id|Count|_count)\\b)",
+    "risky_regex": "(JSON\\.stringify\\s*\\(|json\\.dumps\\s*\\(|\\b(req|request|res|response)\\.(body|json|data)\\b|\\b(first|last|full)_?[Nn]ame\\b|\\bdob\\b|\\bssn\\b|\\bmrn\\b|\\bdiagnos\\w*|\\btranscripts?\\b|\\bmedical\\w*|\\bintake\\w*|\\bform(Data|State|Values)\\b|\\bemail\\b|\\bphone\\b|\\baddress\\b)",
+    "bare_object_regex": "\\b(body|patients?|patient(Data|Record|Info|Profile|Context)|notes?|note(Content|Text|Body)|rows?|records?|payload|chart|encounter)\\b(?!\\s*\\??\\.|\\s*\\[|\\s*:)"
+  },
+  "secret_patterns": [
+    {
+      "id": "SECRET-AWS-KEY",
+      "regex": "\\b(AKIA|ASIA)[0-9A-Z]{16}\\b",
+      "action": "deny"
+    },
+    {
+      "id": "SECRET-STRIPE-LIVE",
+      "regex": "\\b(sk|rk)_live_[0-9a-zA-Z]{20,}",
+      "action": "deny"
+    },
+    {
+      "id": "SECRET-ANTHROPIC",
+      "regex": "\\bsk-ant-[A-Za-z0-9_-]{30,}",
+      "action": "deny"
+    },
+    {
+      "id": "SECRET-OPENAI",
+      "regex": "\\bsk-(proj-|svcacct-)?[A-Za-z0-9_-]{32,}",
+      "action": "deny"
+    },
+    {
+      "id": "SECRET-GITHUB",
+      "regex": "\\b(gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{50,})",
+      "action": "deny"
+    },
+    {
+      "id": "SECRET-SLACK",
+      "regex": "\\bxox[abposr]-[A-Za-z0-9-]{10,}",
+      "action": "deny"
+    },
+    {
+      "id": "SECRET-PRIVATE-KEY",
+      "regex": "-----BEGIN (RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY-----",
+      "action": "deny"
+    },
+    {
+      "id": "SECRET-JWT",
+      "regex": "\\beyJ[A-Za-z0-9_-]{10,}\\.eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}",
+      "action": "ask",
+      "skip_strict": true
+    },
+    {
+      "id": "SECRET-GOOGLE-KEY",
+      "regex": "\\bAIza[0-9A-Za-z_-]{35}\\b",
+      "action": "ask"
+    },
+    {
+      "id": "SECRET-ASSIGNMENT",
+      "regex": "(?i)\\b(password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret)\\b[\"']?\\s*[:=]\\s*[\"'](?![^\"']*(\\$\\{|process\\.env|changeme|example|placeholder|your[_-]|<|xxx|\\*\\*\\*|test|mock|demo|qa|fake|dummy|sample|stand|local|dev|new-password|current-password))[^\"'\\s]{12,}[\"']",
+      "action": "ask",
+      "skip_strict": true
+    }
+  ],
+  "env_file_regex": "(^|/)\\.env(\\.[A-Za-z0-9_-]+)?$",
+  "env_file_allowed_regex": "(^|/)\\.env\\.(example|sample|template|defaults)$",
+  "data_file_rules": [
+    {
+      "id": "DATAFILE-CLINICAL",
+      "globs": [
+        "**/*.hl7",
+        "**/*.ccd",
+        "**/*.ccda",
+        "**/*.dcm",
+        "**/*.x12",
+        "**/*.835",
+        "**/*.837",
+        "**/*.edi"
+      ],
+      "action": "deny",
+      "message": "Clinical exchange files (HL7, CCDA, DICOM, X12) don't belong in a repo. Use a synthetic sample generated for the test, registered as an exception."
+    },
+    {
+      "id": "DATAFILE-DUMP",
+      "globs": [
+        "**/*.dump",
+        "**/*.bak",
+        "**/*.sql.gz",
+        "**/*.sqlite",
+        "**/*.sqlite3",
+        "**/*.db",
+        "**/*.mdb",
+        "**/*.accdb"
+      ],
+      "action": "deny",
+      "message": "Database dumps and database files can't be checked for PHI and don't belong in a repo."
+    },
+    {
+      "id": "DATAFILE-TABULAR",
+      "globs": [
+        "**/*.csv",
+        "**/*.tsv",
+        "**/*.xlsx",
+        "**/*.xls",
+        "**/*.parquet",
+        "**/*.ndjson",
+        "**/*.jsonl",
+        "**/*.avro"
+      ],
+      "action": "ask",
+      "strict_action": "warn",
+      "message": "Tabular data files are where real exports hide. Confirm this is synthetic or reference data (not about people)."
+    }
+  ],
+  "unverified_action": "ask",
+  "vendor_check_extensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".py",
+    ".go",
+    ".rb",
+    ".java",
+    ".kt",
+    ".swift",
+    ".cs",
+    ".php",
+    ".json",
+    ".yml",
+    ".yaml",
+    ".toml",
+    ".txt",
+    ".env.example",
+    ".sql",
+    ".sh"
+  ],
+  "vendor_check_files": [
+    "package.json",
+    "requirements.txt",
+    "pyproject.toml",
+    "Pipfile",
+    "Dockerfile",
+    "next.config.js"
+  ],
+  "vendor_exempt_paths": [],
+  "vendors": {
+    "openai-direct": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "openai"
+      ],
+      "py_modules": [
+        "openai"
+      ],
+      "domains": [
+        "api.openai.com"
+      ]
+    },
+    "anthropic-direct": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "@anthropic-ai/sdk",
+        "@anthropic-ai/claude-agent-sdk"
+      ],
+      "py_modules": [
+        "anthropic"
+      ],
+      "domains": [
+        "api.anthropic.com"
+      ]
+    },
+    "azure-openai": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "@azure/openai",
+        "@ai-sdk/azure"
+      ],
+      "domains": [
+        "openai.azure.com",
+        "services.ai.azure.com",
+        "cognitiveservices.azure.com"
+      ]
+    },
+    "azure-speech": {
+      "status": "unverified",
+      "category": "Transcription",
+      "packages": [
+        "microsoft-cognitiveservices-speech-sdk"
+      ],
+      "domains": [
+        "speech.microsoft.com"
+      ]
+    },
+    "aws": {
+      "status": "unverified",
+      "category": "Cloud (Bedrock, S3, SES, Chime, Transcribe...)",
+      "packages": [
+        "@aws-sdk/",
+        "aws-amplify",
+        "@aws-amplify/",
+        "amazon-chime-sdk-js"
+      ],
+      "py_modules": [
+        "boto3",
+        "botocore"
+      ],
+      "domains": [
+        "amazonaws.com"
+      ]
+    },
+    "google-ai": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "@google/generative-ai",
+        "@google/genai",
+        "@ai-sdk/google"
+      ],
+      "py_modules": [
+        "google.generativeai",
+        "google.genai"
+      ],
+      "domains": [
+        "generativelanguage.googleapis.com",
+        "aiplatform.googleapis.com"
+      ]
+    },
+    "cohere": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "cohere-ai"
+      ],
+      "py_modules": [
+        "cohere"
+      ],
+      "domains": [
+        "api.cohere.com",
+        "api.cohere.ai"
+      ]
+    },
+    "mistral": {
+      "status": "unverified",
+      "category": "AI model / OCR",
+      "packages": [
+        "@mistralai/mistralai"
+      ],
+      "py_modules": [
+        "mistralai"
+      ],
+      "domains": [
+        "api.mistral.ai"
+      ]
+    },
+    "xai": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "@ai-sdk/xai"
+      ],
+      "domains": [
+        "api.x.ai"
+      ]
+    },
+    "groq": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "groq-sdk",
+        "@ai-sdk/groq"
+      ],
+      "py_modules": [
+        "groq"
+      ],
+      "domains": [
+        "api.groq.com"
+      ]
+    },
+    "replicate": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "replicate"
+      ],
+      "py_modules": [
+        "replicate"
+      ],
+      "domains": [
+        "api.replicate.com"
+      ]
+    },
+    "huggingface": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "@huggingface/inference"
+      ],
+      "py_modules": [
+        "huggingface_hub"
+      ],
+      "domains": [
+        "huggingface.co",
+        "hf.space"
+      ]
+    },
+    "openrouter": {
+      "status": "unverified",
+      "category": "AI model",
+      "packages": [
+        "@openrouter/ai-sdk-provider"
+      ],
+      "domains": [
+        "openrouter.ai"
+      ]
+    },
+    "pinecone": {
+      "status": "unverified",
+      "category": "Vector DB",
+      "packages": [
+        "@pinecone-database/pinecone"
+      ],
+      "py_modules": [
+        "pinecone"
+      ],
+      "domains": [
+        "pinecone.io"
+      ]
+    },
+    "supabase": {
+      "status": "unverified",
+      "category": "Database / storage",
+      "packages": [
+        "@supabase/supabase-js",
+        "@supabase/ssr"
+      ],
+      "py_modules": [
+        "supabase"
+      ],
+      "domains": [
+        "supabase.co",
+        "supabase.com"
+      ]
+    },
+    "firebase": {
+      "status": "unverified",
+      "category": "Database / storage",
+      "packages": [
+        "firebase",
+        "firebase-admin"
+      ],
+      "py_modules": [
+        "firebase_admin"
+      ],
+      "domains": [
+        "firebaseio.com",
+        "firebasestorage.googleapis.com"
+      ]
+    },
+    "convex": {
+      "status": "unverified",
+      "category": "Database",
+      "packages": [
+        "convex"
+      ],
+      "domains": [
+        "convex.cloud",
+        "convex.site"
+      ]
+    },
+    "cloudflare": {
+      "status": "unverified",
+      "category": "Storage / edge",
+      "packages": [
+        "@cloudflare/"
+      ],
+      "domains": [
+        "r2.cloudflarestorage.com",
+        "workers.dev"
+      ]
+    },
+    "vercel": {
+      "status": "unverified",
+      "category": "Hosting / analytics",
+      "packages": [
+        "@vercel/analytics",
+        "@vercel/blob",
+        "@vercel/speed-insights"
+      ],
+      "domains": [
+        "vercel-storage.com"
+      ]
+    },
+    "stripe": {
+      "status": "unverified",
+      "category": "Payments",
+      "packages": [
+        "stripe",
+        "@stripe/"
+      ],
+      "py_modules": [
+        "stripe"
+      ],
+      "domains": [
+        "api.stripe.com"
+      ]
+    },
+    "posthog": {
+      "status": "unverified",
+      "category": "Product analytics",
+      "packages": [
+        "posthog-js",
+        "posthog-node"
+      ],
+      "py_modules": [
+        "posthog"
+      ],
+      "domains": [
+        "posthog.com"
+      ]
+    },
+    "mixpanel": {
+      "status": "unverified",
+      "category": "Product analytics",
+      "packages": [
+        "mixpanel-browser",
+        "mixpanel"
+      ],
+      "domains": [
+        "mixpanel.com"
+      ]
+    },
+    "segment": {
+      "status": "unverified",
+      "category": "Product analytics",
+      "packages": [
+        "@segment/"
+      ],
+      "domains": [
+        "segment.io",
+        "segment.com"
+      ]
+    },
+    "amplitude": {
+      "status": "unverified",
+      "category": "Product analytics",
+      "packages": [
+        "@amplitude/"
+      ],
+      "domains": [
+        "amplitude.com"
+      ]
+    },
+    "google-analytics": {
+      "status": "unverified",
+      "category": "Web analytics",
+      "packages": [
+        "react-ga4",
+        "@next/third-parties"
+      ],
+      "domains": [
+        "google-analytics.com",
+        "googletagmanager.com"
+      ]
+    },
+    "hotjar": {
+      "status": "unverified",
+      "category": "Session replay",
+      "packages": [
+        "@hotjar/browser"
+      ],
+      "domains": [
+        "hotjar.com"
+      ]
+    },
+    "fullstory": {
+      "status": "unverified",
+      "category": "Session replay",
+      "packages": [
+        "@fullstory/browser"
+      ],
+      "domains": [
+        "fullstory.com"
+      ]
+    },
+    "logrocket": {
+      "status": "unverified",
+      "category": "Session replay",
+      "packages": [
+        "logrocket"
+      ],
+      "domains": [
+        "logrocket.io",
+        "lr-ingest.com"
+      ]
+    },
+    "sentry": {
+      "status": "unverified",
+      "category": "Error tracking",
+      "packages": [
+        "@sentry/"
+      ],
+      "py_modules": [
+        "sentry_sdk"
+      ],
+      "domains": [
+        "sentry.io"
+      ]
+    },
+    "datadog": {
+      "status": "unverified",
+      "category": "Logs / APM",
+      "packages": [
+        "@datadog/",
+        "dd-trace"
+      ],
+      "py_modules": [
+        "ddtrace",
+        "datadog"
+      ],
+      "domains": [
+        "datadoghq.com"
+      ]
+    },
+    "twilio": {
+      "status": "unverified",
+      "category": "SMS / voice",
+      "packages": [
+        "twilio"
+      ],
+      "py_modules": [
+        "twilio"
+      ],
+      "domains": [
+        "api.twilio.com"
+      ]
+    },
+    "sendgrid": {
+      "status": "unverified",
+      "category": "Email",
+      "packages": [
+        "@sendgrid/"
+      ],
+      "py_modules": [
+        "sendgrid"
+      ],
+      "domains": [
+        "api.sendgrid.com"
+      ]
+    },
+    "resend": {
+      "status": "unverified",
+      "category": "Email",
+      "packages": [
+        "resend"
+      ],
+      "py_modules": [
+        "resend"
+      ],
+      "domains": [
+        "api.resend.com"
+      ]
+    },
+    "postmark": {
+      "status": "unverified",
+      "category": "Email",
+      "packages": [
+        "postmark"
+      ],
+      "domains": [
+        "api.postmarkapp.com"
+      ]
+    },
+    "mailgun": {
+      "status": "unverified",
+      "category": "Email",
+      "packages": [
+        "mailgun.js"
+      ],
+      "domains": [
+        "api.mailgun.net"
+      ]
+    },
+    "gohighlevel": {
+      "status": "unverified",
+      "category": "CRM / marketing",
+      "packages": [
+        "@gohighlevel/"
+      ],
+      "domains": [
+        "leadconnectorhq.com",
+        "gohighlevel.com"
+      ]
+    },
+    "slack-webhooks": {
+      "status": "unverified",
+      "category": "Alerts",
+      "packages": [
+        "@slack/"
+      ],
+      "domains": [
+        "hooks.slack.com",
+        "slack.com"
+      ]
+    },
+    "discord-webhooks": {
+      "status": "unverified",
+      "category": "Alerts",
+      "packages": [
+        "discord.js"
+      ],
+      "domains": [
+        "discord.com"
+      ]
+    }
+  },
+  "custom_rules": [
+    {
+      "id": "STORAGE-PUBLIC",
+      "description": "Public bucket or public-read object for storage",
+      "regex": "(public-read(-write)?\\b|createBucket\\([^)]*public\\s*:\\s*true|BlockPublicAcls\\s*[:=]\\s*false)",
+      "paths": [
+        "**/*"
+      ],
+      "action": "deny",
+      "message": "Storage that can hold PHI stays private. Use private buckets and short-lived signed URLs.",
+      "exclude_paths": [
+        "**/*.md"
+      ]
+    },
+    {
+      "id": "TLS-PLAIN-HTTP",
+      "description": "Plain http:// URL to a non-local host",
+      "regex": "http://(?!localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[::1\\]|host\\.docker\\.internal|[a-z0-9.-]*\\.(local|test|example|internal|localhost)\\b|example\\.(com|org|net)\\b|(www\\.)?w3\\.org|schemas\\.|json-schema\\.org|purl\\.org|xmlns\\.|ns\\.adobe\\.com|www\\.apple\\.com/DTDs|scripts\\.sil\\.org|loinc\\.org|snomed\\.info|(terminology\\.)?hl7\\.org|unitsofmeasure\\.org|www\\.nlm\\.nih\\.gov|hl7\\.org)[a-z0-9-]+\\.[a-z]",
+      "paths": [
+        "**/*"
+      ],
+      "action": "warn",
+      "message": "PHI moves only over TLS. Use https:// unless this is local or a namespace URI.",
+      "exclude_paths": [
+        "**/*.txt",
+        "**/LICENSE*",
+        "**/*.md"
+      ],
+      "skip_strict": true
+    }
+  ],
+  "blocked_commands": [
+    {
+      "id": "CMD-NO-VERIFY",
+      "regex": "\\bgit\\b[^|;&]*\\b(commit|push|merge|rebase|am|cherry-pick)\\b[^|;&]*\\s--no-verify\\b|\\bgit\\s+commit\\b[^|;&]*\\s-[a-zA-Z]*n[a-zA-Z]*(\\s|$)",
+      "action": "deny",
+      "message": "Don't skip git hooks; they run the same HIPAA checks as CI."
+    },
+    {
+      "id": "CMD-DB-DUMP",
+      "regex": "\\b(pg_dump|pg_dumpall|supabase\\s+db\\s+dump|mysqldump|mongodump)\\b",
+      "action": "ask",
+      "message": "A dump of a database that holds PHI is PHI. Dump only synthetic or schema-only data on a dev machine (pg_dump --schema-only)."
+    },
+    {
+      "id": "CMD-GIT-ADD-FORCE",
+      "regex": "\\bgit\\s+add\\b[^|;&]*\\s(-f|--force)\\b",
+      "action": "ask",
+      "message": "Force-adding an ignored file can commit secrets or PHI exports."
+    },
+    {
+      "id": "GUARD-HOOKSPATH",
+      "regex": "core\\.hooksPath",
+      "action": "ask",
+      "message": "Changing git's hooks path can switch off the pre-commit check."
+    },
+    {
+      "id": "GUARD-PLUGIN-OFF",
+      "regex": "\\bclaude\\s+plugins?\\s+(disable|uninstall|remove)\\b[^|;&]*hipaa-guardrails|\\bdisableAllHooks\\b",
+      "action": "ask",
+      "message": "This turns the HIPAA guardrails off. Only the policy owner does that."
+    },
+    {
+      "id": "GUARD-PROTECTED-FILE",
+      "regex": "\\b(rm|mv|cp|truncate|chmod|chattr|ln|unlink|git\\s+rm|git\\s+mv|git\\s+update-index)\\b[^|;&]*(\\.hipaa-guardrails|\\.githooks|\\.claude/settings|\\.github/workflows|CODEOWNERS)",
+      "action": "ask",
+      "message": "This changes a file that holds the guardrails or their enforcement."
+    },
+    {
+      "id": "CMD-SKIP-HOOKS-ENV",
+      "regex": "\\b(HUSKY=0|SKIP=\\S*hipaa|HIPAA_GUARDRAILS_(OFF|DISABLE)\\w*=)",
+      "action": "deny",
+      "message": "Don't skip the guardrails with environment variables."
+    }
+  ],
+  "exceptions": []
+}

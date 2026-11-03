@@ -1,0 +1,45 @@
+# Optional: a weekly full scan of every tracked file, compared with a committed
+# baseline (.hipaa-guardrails.baseline.json) so only new findings fail. Create the
+# baseline once with:
+#   python3 <plugin>/scripts/guard.py scan --all --write-baseline .hipaa-guardrails.baseline.json
+# Costs one job a week. Remove this file if Actions minutes are tight; the PR check
+# already covers everything new.
+
+name: HIPAA guardrails weekly scan
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HIPAA_GUARDRAILS_EVIDENCE_DIR: ${{ runner.temp }}/hipaa-evidence
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.HIPAA_GUARDRAILS_REPO }}
+          ref: ${{ vars.HIPAA_GUARDRAILS_REF }}
+          token: ${{ secrets.HIPAA_GUARDRAILS_TOKEN || github.token }}
+          path: .hipaa-guardrails-tool
+          persist-credentials: false
+      - name: Full scan against the baseline
+        run: |
+          python3 .hipaa-guardrails-tool/plugins/hipaa-guardrails/scripts/guard.py \
+            scan --all --baseline .hipaa-guardrails.baseline.json --github
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hipaa-guardrails-weekly-${{ github.run_id }}
+          path: ${{ runner.temp }}/hipaa-evidence
+          retention-days: 90
+          if-no-files-found: ignore

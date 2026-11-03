@@ -1,0 +1,20 @@
+#!/bin/sh
+# HIPAA guardrails pre-commit hook: checks what this commit would record.
+# Enable once per clone:  git config core.hooksPath .githooks
+# Uses HIPAA_GUARDRAILS_GUARD if set, otherwise the newest installed copy of the
+# Claude Code plugin (respects CLAUDE_CONFIG_DIR). CI runs the same check on every
+# PR, so a machine without the plugin is still covered at merge time.
+GUARD="${HIPAA_GUARDRAILS_GUARD:-}"
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+if [ -z "$GUARD" ]; then
+  GUARD=$(ls -1d "$CFG"/plugins/cache/*/hipaa-guardrails/*/scripts/guard.py 2>/dev/null | sort -V | tail -n 1)
+fi
+if [ -z "$GUARD" ]; then
+  GUARD=$(ls -1d "$CFG"/plugins/marketplaces/*/plugins/hipaa-guardrails/scripts/guard.py 2>/dev/null | head -n 1)
+fi
+if [ -z "$GUARD" ] || [ ! -f "$GUARD" ]; then
+  echo "hipaa-guardrails: checker not found; install the plugin (claude plugin install hipaa-guardrails@hipaa-guardrails) or set HIPAA_GUARDRAILS_GUARD. CI will still check this PR." >&2
+  exit 0
+fi
+command -v python3 >/dev/null 2>&1 || { echo "hipaa-guardrails: python3 not found; CI will still check this PR." >&2; exit 0; }
+exec python3 "$GUARD" staged

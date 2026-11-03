@@ -1,0 +1,10 @@
+{
+  "extraKnownMarketplaces": {
+    "hipaa-guardrails": {
+      "source": { "source": "github", "repo": "freemanlafleur/hipaa-guardrails" }
+    }
+  },
+  "enabledPlugins": {
+    "hipaa-guardrails@hipaa-guardrails": true
+  }
+}

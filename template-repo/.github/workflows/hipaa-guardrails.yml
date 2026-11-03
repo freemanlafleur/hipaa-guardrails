@@ -1,0 +1,63 @@
+# HIPAA guardrails CI check (template).
+# Runs the same checker and policy as the Claude Code plugin's hooks over what a
+# pull request adds, so Codex reviews, human PRs and Claude sessions all meet the
+# same rules. Fails on "deny" findings and on policy changes without a recorded,
+# approved version bump; "ask"/"warn" become annotations. Every run leaves an
+# evidence record (no file contents) as a build artifact.
+#
+# Needs (set once per org or repo):
+#   vars.HIPAA_GUARDRAILS_REPO      owner/repo of the guardrails repo, e.g. freemanlafleur/hipaa-guardrails
+#   vars.HIPAA_GUARDRAILS_REF       a pinned tag, e.g. v0.2.0 (pin a commit SHA for stronger change control)
+#   secrets.HIPAA_GUARDRAILS_TOKEN  read-only token for that repo (only if it is private)
+# And in branch protection for the default branch: require this check, require
+# review from code owners, and don't allow bypassing those settings.
+#
+# On GitHub's Free plan each job bills at least a minute: if another job already
+# runs on every PR, fold these steps into it instead.
+
+name: HIPAA guardrails
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hipaa-guardrails-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  hipaa-guardrails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HIPAA_GUARDRAILS_EVIDENCE_DIR: ${{ runner.temp }}/hipaa-evidence
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # the check diffs against the PR's base and reads the base policy
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.HIPAA_GUARDRAILS_REPO }}
+          ref: ${{ vars.HIPAA_GUARDRAILS_REF }}
+          token: ${{ secrets.HIPAA_GUARDRAILS_TOKEN || github.token }}
+          path: .hipaa-guardrails-tool
+          persist-credentials: false
+
+      - name: HIPAA guardrails (what this PR adds)
+        run: |
+          python3 .hipaa-guardrails-tool/plugins/hipaa-guardrails/scripts/guard.py \
+            scan --diff "${{ github.event.pull_request.base.sha }}" --github
+
+      - name: Keep the evidence record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hipaa-guardrails-evidence-pr${{ github.event.pull_request.number }}-run${{ github.run_id }}
+          path: ${{ runner.temp }}/hipaa-evidence
+          retention-days: 90        # private repos allow up to 400; long-term copies go to locked storage or Vanta
+          if-no-files-found: ignore

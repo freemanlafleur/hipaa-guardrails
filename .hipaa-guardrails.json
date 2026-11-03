@@ -1,0 +1,41 @@
+{
+  "_comment": "The guardrails repo checks itself. Its tests build identifier-shaped values at runtime on purpose, and the policy file names vendor hosts and rule patterns by design.",
+  "schema_version": 2,
+  "policy_version": "0.2.0",
+  "requires_plugin": ">=0.2.0",
+  "change_log": [
+    {
+      "version": "0.1.0",
+      "date": "2026-11-02",
+      "approver": "PENDING: maintainer",
+      "summary": "Self-check config."
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-11-02",
+      "approver": "PENDING: maintainer",
+      "summary": "Register the checker's own protocol output as a path exception instead of inline waivers."
+    }
+  ],
+  "mode": "enforce",
+  "ignore_paths+": [
+    "tests/**",
+    "plugins/hipaa-guardrails/policy/**"
+  ],
+  "exceptions": [
+    {
+      "id": "EXC-0001",
+      "rules": [
+        "LOG-PHI"
+      ],
+      "paths": [
+        "plugins/hipaa-guardrails/scripts/guard.py"
+      ],
+      "scope": "path",
+      "reason": "The checker prints its own findings and hook protocol JSON, which never contain matched values (tested in test_no_value_leaks_anywhere).",
+      "approver": "PENDING: maintainer",
+      "approved_on": "2026-11-02",
+      "expires": "2027-11-01"
+    }
+  ]
+}

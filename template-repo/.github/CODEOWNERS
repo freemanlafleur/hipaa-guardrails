@@ -1,0 +1,10 @@
+# Changes to the HIPAA guardrails policy and to what enforces it need the policy
+# owner's review. Replace the placeholder with a GitHub user or team, and turn on
+# "Require review from Code Owners" in branch protection.
+/.hipaa-guardrails.json           @POLICY-OWNER
+/.hipaa-guardrails.baseline.json  @POLICY-OWNER
+/.github/workflows/               @POLICY-OWNER
+/.github/CODEOWNERS               @POLICY-OWNER
+/.githooks/                       @POLICY-OWNER
+/.claude/settings.json            @POLICY-OWNER
+/AGENTS.md                        @POLICY-OWNER

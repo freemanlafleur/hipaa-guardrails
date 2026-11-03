@@ -1,0 +1,3 @@
+## HIPAA
+
+This app handles PHI. The `hipaa-guardrails` plugin is enabled in `.claude/settings.json`; follow its skill. Short version: PHI only goes to vendors marked `baa` in `.hipaa-guardrails.json`; this session gets synthetic data only; logs carry ids, counts and codes, never objects or bodies; tests and seeds are synthetic and marked `synthetic-data`; no secrets or `.env` in git. When a guardrails hook blocks something, fix the cause; don't add `phi-ok:` waivers yourself. Run `/hipaa-guardrails:hipaa-check` before opening a PR.

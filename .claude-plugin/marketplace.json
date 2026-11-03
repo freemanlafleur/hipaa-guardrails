@@ -1,0 +1,16 @@
+{
+  "name": "hipaa-guardrails",
+  "description": "HIPAA guardrails for building healthcare software with AI coding agents",
+  "owner": {
+    "name": "Freeman LaFleur"
+  },
+  "plugins": [
+    {
+      "name": "hipaa-guardrails",
+      "source": "./plugins/hipaa-guardrails",
+      "description": "HIPAA guardrails: BAA-only vendors, no PHI in logs, prompts, fixtures or commits, secrets out of git",
+      "version": "0.2.0",
+      "category": "security"
+    }
+  ]
+}

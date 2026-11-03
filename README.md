@@ -88,3 +88,7 @@ These are listed in `docs/CONTROLS.md` under "Decisions that belong to people":
 - whether Bedrock counts as covered
 - six-year evidence storage
 - managed settings
+
+## License
+
+Apache License 2.0. See `LICENSE`.

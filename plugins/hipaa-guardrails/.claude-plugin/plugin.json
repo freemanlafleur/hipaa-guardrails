@@ -1,6 +1,7 @@
 {
   "name": "hipaa-guardrails",
   "version": "0.2.0",
+  "license": "Apache-2.0",
   "description": "HIPAA guardrails for building healthcare software with AI coding agents: BAA-only vendors, no PHI in logs, prompts, fixtures or commits, secrets kept out of git. Hooks block violating tool calls; the same checker runs in CI.",
   "author": {
     "name": "Freeman LaFleur"
